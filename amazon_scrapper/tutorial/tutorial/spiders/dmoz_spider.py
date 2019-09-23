@@ -1,14 +1,11 @@
-
 import scrapy
 import traceback
 import re
-import time
 from tutorial.items import DmozItem
 
 unsuccess_list = []
 class DmozSpider(scrapy.Spider):
     name = "dmoz"
-    rotate_user_agent = True
     start_urls = [
         "http://www.amazon.com/s/ref=fs_w_clo_drs_spr2_w2w?rh=i%3Afashion-brands%2Cn%3A7141123011%2Cn%3A10445813011%2Cn%3A7147440011%2Cn%3A1040660%2Cn%3A1045024%2Cn%3A2346728011%2Cp_6%3AATVPDKIKX0DER&bbn=10445813011&sort=date-desc-rank&ie=UTF8"
     ]
@@ -21,21 +18,23 @@ class DmozSpider(scrapy.Spider):
             print 'title_product = ', title_product
             item_link= response.css('.s-result-item')[i].css('.s-access-detail-page').css('a::attr(href)').extract()[0]
             print 'item_link = ', item_link
-            yield scrapy.Request(item_link, callback=self.parse_question)
+            try:
+                yield scrapy.Request(item_link, callback=self.parse_question)
+            except:
+                unsuccess_list.append(item_link)
+                print traceback.print_exc()
+                print unsuccess_list
             i += 1
 
         if response.css('#pagnNextLink::attr(href)').extract()[0]:
             url = 'http://www.amazon.com{}'.format(response.css('#pagnNextLink::attr(href)').extract()[0])
-            # trying to sleep after scrapping all the items after every 5 pages (but doen't help for ip getting banned)
-            '''page_number = int(url.split('page=')[1].split('&')[0])
-            print 'page_number = ', page_number
-            if int(page_number)%5 == 0:
-                time.sleep(300)'''
             print '***************inside if url = **************', url
             yield scrapy.Request(url, callback=self.parse)
 
-            
-    #This function is the one which parses every item of a page and gets the details about it
+            filename = 'amazon' + '.html'
+            with open(filename, 'wb') as f:
+                f.write(response.body)
+
     def parse_question(self, response):
         item = DmozItem()
         title_product = response.css('#productTitle::text').extract()[0]
